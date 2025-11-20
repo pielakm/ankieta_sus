@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Wszystkie Wyniki SUS</title>
+    <style>
+        body { font-family: sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; background-color: #f4f7f6; }
+        h1 { text-align: center; color: #2c3e50; }
+        a { color: #007bff; text-decoration: none; margin-bottom: 20px; display: inline-block; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background-color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+        th { background-color: #e0f7fa; color: #34495e; font-weight: bold; }
+        .sus-score-cell { font-weight: bold; background-color: #d1ecf1; }
+    </style>
+</head>
+<body>
+    <h1>Wszystkie Wyniki Ankiet SUS</h1>
+
+    <a href="/">&#8592; Wróć do Ankiety</a>
+
+    <% if (results.length === 0) { %>
+        <p>Brak zapisanych wyników.</p>
+    <% } else { %>
+        <table>
+            <thead>
+                <tr>
+                    <th>Pseudonim</th> <th>Data i Czas</th>
+                    <% questions.forEach((q, i) => { %>
+                        <th>P<%= i + 1 %></th>
+                    <% }); %>
+                    <th class="sus-score-cell">WYNIK SUS</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% results.forEach(result => { %>
+                <tr>
+                    <td><%= result.nickname %></td> <td><%= result.timestamp %></td>
+                    <% result.responses.forEach(resValue => { %>
+                        <td><%= resValue %></td>
+                    <% }); %>
+                    <td class="sus-score-cell"><%= result.susScore %></td>
+                </tr>
+                <% }); %>
+            </tbody>
+        </table>
+    <% } %>
+</body>
+<footer style="margin-top: 50px; padding: 20px; text-align: center; border-top: 1px solid #ddd; font-size: 0.85em; color: #777;">
+        Ankieta SUS została stworzona przez Mateusza Pielaka na potrzeby projektu gry Mahjong.
+    </footer>
+
+</body>
+</html>
