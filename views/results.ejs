@@ -11,6 +11,29 @@
         th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
         th { background-color: #e0f7fa; color: #34495e; font-weight: bold; }
         .sus-score-cell { font-weight: bold; background-color: #d1ecf1; }
+        .btn-excel {
+        display: inline-block;
+        background-color: #217346; /* Kolor zielony Excela */
+        color: white;
+        padding: 10px 20px;
+        text-decoration: none;
+        border-radius: 5px;
+        font-weight: bold;
+        margin-right: 10px;
+    }
+    .btn-excel:hover {
+        background-color: #1a5c38;
+    }
+    /* Opcjonalnie styl dla CSV jeśli go nie masz */
+    .btn-csv {
+        display: inline-block;
+        background-color: #007bff;
+        color: white;
+        padding: 10px 20px;
+        text-decoration: none;
+        border-radius: 5px;
+        font-weight: bold;
+    }
     </style>
 </head>
 <body>
@@ -43,6 +66,10 @@
                 <% }); %>
             </tbody>
         </table>
+        <div style="margin-bottom: 20px;">
+    <a href="/export-excel" class="btn-excel">📊 Pobierz jako Excel (.xlsx)</a>
+    <a href="/export" class="btn-csv">📄 Pobierz jako CSV</a>
+</div>
     <% } %>
 </body>
 <footer style="margin-top: 50px; padding: 20px; text-align: center; border-top: 1px solid #ddd; font-size: 0.85em; color: #777;">
