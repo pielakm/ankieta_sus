@@ -4,6 +4,7 @@ const port = process.env.PORT || 3000;
 const path = require('path');
 const mongoose = require('mongoose');
 const ExcelJS = require('exceljs');
+const statistic = require('./statistic');
 
 // Wczytywanie .env lokalnie (Vercel używa zmiennych środowiskowych z panelu)
 if (process.env.NODE_ENV !== 'production') {
@@ -115,24 +116,36 @@ app.use(async (req, res, next) => {
 });
 
 app.get('/', (req, res) => {
+    const error = req.query.error || null;
+    res.render('index', { error });
+});
+
+app.get('/survey', (req, res) => {
     const nickname = req.query.nickname || null;
-    res.render('index', { questions: SUS_QUESTIONS, susScore: null, error: null, nickname: nickname, susInterpretation: null });
+    if (!nickname || nickname.trim() === '') {
+        const msg = encodeURIComponent('Pseudonim jest wymagany.');
+        return res.redirect(`/?error=${msg}`);
+    }
+    res.render('survey', { questions: SUS_QUESTIONS, susScore: null, error: null, nickname, susInterpretation: null });
 });
 
 app.post('/start', (req, res) => {
     const nickname = req.body.nickname;
     if (!nickname || nickname.trim() === '') {
-         return res.render('index', { questions: SUS_QUESTIONS, susScore: null, error: "Pseudonim jest wymagany.", nickname: null, susInterpretation: null });
+        return res.render('index', { error: "Pseudonim jest wymagany." });
     }
-    res.redirect(`/?nickname=${encodeURIComponent(nickname)}`);
+    res.redirect(`/survey?nickname=${encodeURIComponent(nickname)}`);
 });
 
-app.post('/', async (req, res) => {
+app.post('/survey', async (req, res) => {
     const susScore = calculateSusScore(req.body);
     const nickname = req.body.nickname;
-    if (!nickname || nickname.trim() === '') return res.redirect('/'); 
+    if (!nickname || nickname.trim() === '') {
+        const msg = encodeURIComponent('Pseudonim jest wymagany.');
+        return res.redirect(`/?error=${msg}`);
+    }
     if (susScore === null) {
-        return res.render('index', { questions: SUS_QUESTIONS, susScore: null, error: "Proszę odpowiedzieć na wszystkie pytania.", nickname: nickname, susInterpretation: null });
+        return res.render('survey', { questions: SUS_QUESTIONS, susScore: null, error: "Proszę odpowiedzieć na wszystkie pytania.", nickname: nickname, susInterpretation: null });
     }
 
     const interpretation = interpretSusScore(susScore);
@@ -146,9 +159,9 @@ app.post('/', async (req, res) => {
         await newResult.save();
     } catch (e) {
         console.error("Błąd zapisu:", e);
-        return res.status(500).render('index', { questions: SUS_QUESTIONS, susScore: susScore, susInterpretation: interpretation, error: "Błąd zapisu do bazy.", nickname: nickname });
+        return res.status(500).render('survey', { questions: SUS_QUESTIONS, susScore: susScore, susInterpretation: interpretation, error: "Błąd zapisu do bazy.", nickname: nickname });
     }
-    res.render('index', { questions: SUS_QUESTIONS, susScore: susScore, susInterpretation: interpretation, error: null, nickname: nickname });
+    res.render('survey', { questions: SUS_QUESTIONS, susScore: susScore, susInterpretation: interpretation, error: null, nickname: nickname });
 });
 
 app.get('/results', async (req, res) => {
@@ -171,9 +184,19 @@ app.get('/export', async (req, res) => {
      // Dla skrótu tutaj:
      try {
         const results = await SusResult.find().sort({ timestamp: -1 });
-        // ... generowanie CSV ...
-        let csvContent = "Pseudonim;Wynik\n"; // uproszczenie
-        results.forEach(r => csvContent += `${r.nickname};${r.susScore}\n`);
+
+        // Nagłówek: Pseudonim;Wynik;P1;...;P10
+        const headers = ['Pseudonim', 'Wynik'];
+        for (let i = 1; i <= 10; i++) headers.push(`P${i}`);
+        let csvContent = headers.join(';') + '\n';
+
+        results.forEach(r => {
+            const resp = Array.isArray(r.responses) ? r.responses : [];
+            const cols = [r.nickname, r.susScore];
+            for (let i = 0; i < 10; i++) cols.push(resp[i] !== undefined ? resp[i] : '');
+            csvContent += cols.join(';') + '\n';
+        });
+
         res.setHeader('Content-Type', 'text/csv');
         res.setHeader('Content-Disposition', 'attachment; filename="wyniki.csv"');
         res.send(csvContent);
@@ -188,19 +211,27 @@ app.get('/export-excel', async (req, res) => {
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Wyniki SUS');
         
-        worksheet.columns = [
+        const columns = [
             { header: 'Pseudonim', key: 'nickname', width: 20 },
             { header: 'Data', key: 'timestamp', width: 25 },
             { header: 'Wynik SUS', key: 'susScore', width: 15 },
-             // ... dodaj kolumny pytań jeśli chcesz
         ];
+        for (let i = 1; i <= 10; i++) {
+            columns.push({ header: `P${i}`, key: `p${i}`, width: 8 });
+        }
+        worksheet.columns = columns;
 
         rawResults.forEach(result => {
-            worksheet.addRow({
+            const row = {
                 nickname: result.nickname,
                 timestamp: result.timestamp.toLocaleString('pl-PL'),
                 susScore: result.susScore
-            });
+            };
+            const resp = Array.isArray(result.responses) ? result.responses : [];
+            for (let i = 1; i <= 10; i++) {
+                row[`q${i}`] = resp[i - 1] !== undefined ? resp[i - 1] : '';
+            }
+            worksheet.addRow(row);
         });
 
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -213,6 +244,7 @@ app.get('/export-excel', async (req, res) => {
     }
 });
 
+app.use(statistic);
 // ----------------------------------------------------------------
 // START SERWERA (ZMIANA DLA VERCEL)
 // ----------------------------------------------------------------

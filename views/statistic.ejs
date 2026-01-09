@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Statystyki SUS</title>
+    <link rel="stylesheet" href="/styles.css">
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+</head>
+<body>
+    <h1>Statystyki SUS</h1>
+    <a href="/results">&#8592; Wróć do wyników</a>
+
+    <!-- Wykres 1: Średnie z odchyleniami -->
+    <div class="card chart-container">
+        <h2 style="margin-top:0;">Średnie odpowiedzi z odchyleniami</h2>
+        <div id="avgChart" style="width:100%;height:420px;"></div>
+    </div>
+
+    <!-- Wykres 2: Boxplot rozkładu -->
+    <div class="card chart-container">
+        <h2 style="margin-top:0;">Rozkład odpowiedzi (boxplot)</h2>
+        <div id="boxChart" style="width:100%;height:520px;"></div>
+    </div>
+
+    <!-- Wykres 3: Najczęściej wybierane odpowiedzi -->
+    <div class="card chart-container">
+        <h2 style="margin-top:0;">Najczęściej wybierana odpowiedź w każdym pytaniu</h2>
+        <div id="mostFreqChart" style="width:100%;height:420px;"></div>
+    </div>
+
+    <!-- Wykres 4: Rozkład procentowy odpowiedzi (stacked bar) -->
+    <div class="card chart-container">
+        <h2 style="margin-top:0;">Rozkład procentowy odpowiedzi (1-5) dla każdego pytania</h2>
+        <div id="stackedChart" style="width:100%;height:480px;"></div>
+    </div>
+
+    <!-- Wykres 5: Heatmapa częstotliwości -->
+    <div class="card chart-container">
+        <h2 style="margin-top:0;">Heatmapa częstotliwości odpowiedzi</h2>
+        <div id="heatmapChart" style="width:100%;height:520px;"></div>
+    </div>
+
+    <!-- Wykres 6: Trend wyniku SUS w czasie -->
+    <div class="card chart-container">
+        <h2 style="margin-top:0;">Trend wyniku SUS w czasie</h2>
+        <div id="trendChart" style="width:100%;height:420px;"></div>
+    </div>
+
+    <!-- Tabela odchyleń standardowych -->
+    <div class="card">
+        <h2 style="margin-top:0;">Odchylenia standardowe</h2>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Pytanie</th>
+                        <th>Średnia</th>
+                        <th>Odchylenie std.</th>
+                        <th>Najczęstsza odpowiedź</th>
+                        <th>Częstotliwość (%)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% labels.forEach((label, i) => { %>
+                        <tr>
+                            <td><%= label %></td>
+                            <td><%= (averages[i] !== null) ? averages[i].toFixed(2) : '-' %></td>
+                            <td><%= (stdDevs[i] !== null) ? stdDevs[i].toFixed(2) : '-' %></td>
+                            <td><%= mostFrequent[i].value || '-' %></td>
+                            <td><%= mostFrequent[i].percent %>%</td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <footer>
+        Ankieta SUS została stworzona przez Mateusza Pielaka na potrzeby projektu gry Mahjong.
+    </footer>
+
+    <script>
+        // Dane z serwera
+        const labels = <%- JSON.stringify(labels) %>;
+        const averages = <%- JSON.stringify(averages) %>;
+        const stdDevs = <%- JSON.stringify(stdDevs) %>;
+        const distributions = <%- JSON.stringify(distributions) %>;
+        const frequencies = <%- JSON.stringify(frequencies) %>;
+        const mostFrequent = <%- JSON.stringify(mostFrequent) %>;
+        const heatmapZ = <%- JSON.stringify(heatmapZ) %>;
+        const susScores = <%- JSON.stringify(susScores) %>;
+        const timestamps = <%- JSON.stringify(timestamps) %>;
+
+        // 1. Wykres kolumnowy: średnie z odchyleniem standardowym
+        const avgTrace = {
+            type: 'bar',
+            x: labels,
+            y: averages,
+            marker: { color: '#2c7be5' },
+            error_y: { type: 'data', array: stdDevs, visible: true, color: '#555' },
+            name: 'Średnia'
+        };
+        const avgLayout = {
+            margin: { t: 10 },
+            yaxis: { range: [0, 5], title: 'Ocena (1-5)' },
+            xaxis: { title: 'Pytania' }
+        };
+        Plotly.newPlot('avgChart', [avgTrace], avgLayout, {responsive: true});
+
+        // 2. Boxplot: rozkład odpowiedzi per pytanie
+        const boxTraces = labels.map((label, i) => ({
+            type: 'box',
+            name: label,
+            y: distributions[i],
+            boxmean: true,
+            marker: { color: '#17a2b8' }
+        }));
+        const boxLayout = {
+            margin: { t: 10 },
+            yaxis: { range: [0.5, 5.5], dtick: 1, title: 'Ocena (1-5)' },
+            xaxis: { title: 'Pytania' }
+        };
+        Plotly.newPlot('boxChart', boxTraces, boxLayout, {responsive: true});
+
+        // 3. Najczęściej wybierana odpowiedź
+        const mostFreqTrace = {
+            type: 'bar',
+            x: labels,
+            y: mostFrequent.map(m => m.value),
+            text: mostFrequent.map(m => `${m.value} (${m.percent}%)`),
+            textposition: 'outside',
+            marker: { color: '#28a745' },
+            name: 'Najczęstsza odpowiedź'
+        };
+        const mostFreqLayout = {
+            margin: { t: 10 },
+            yaxis: { range: [0, 6], dtick: 1, title: 'Wartość odpowiedzi' },
+            xaxis: { title: 'Pytania' }
+        };
+        Plotly.newPlot('mostFreqChart', [mostFreqTrace], mostFreqLayout, {responsive: true});
+
+        // 4. Rozkład procentowy (stacked bar)
+        const answerLabels = ['1', '2', '3', '4', '5'];
+        const colors = ['#dc3545', '#fd7e14', '#ffc107', '#28a745', '#20c997'];
+        const stackedTraces = answerLabels.map((ans, idx) => {
+            const totals = frequencies.map(f => f.reduce((a, b) => a + b, 0));
+            const percents = frequencies.map((f, i) => (totals[i] > 0 ? (f[idx] / totals[i]) * 100 : 0));
+            return {
+                type: 'bar',
+                x: labels,
+                y: percents,
+                name: `Odpowiedź ${ans}`,
+                marker: { color: colors[idx] }
+            };
+        });
+        const stackedLayout = {
+            barmode: 'stack',
+            margin: { t: 10 },
+            yaxis: { title: 'Procent (%)' },
+            xaxis: { title: 'Pytania' }
+        };
+        Plotly.newPlot('stackedChart', stackedTraces, stackedLayout, {responsive: true});
+
+        // 5. Heatmapa częstotliwości
+        const heatmapTrace = {
+            type: 'heatmap',
+            x: answerLabels,
+            y: labels,
+            z: heatmapZ,
+            colorscale: 'Viridis',
+            hovertemplate: 'Pytanie: %{y}<br>Odpowiedź: %{x}<br>Liczba: %{z}<extra></extra>'
+        };
+        const heatmapLayout = {
+            margin: { t: 10 },
+            xaxis: { title: 'Odpowiedź (1-5)' },
+            yaxis: { title: 'Pytania' }
+        };
+        Plotly.newPlot('heatmapChart', [heatmapTrace], heatmapLayout, {responsive: true});
+
+        // 6. Trend wyniku SUS w czasie
+        const trendTrace = {
+            type: 'scatter',
+            mode: 'lines+markers',
+            x: timestamps,
+            y: susScores,
+            marker: { color: '#6f42c1', size: 8 },
+            line: { color: '#6f42c1', width: 2 },
+            name: 'Wynik SUS'
+        };
+        const trendLayout = {
+            margin: { t: 10 },
+            yaxis: { range: [0, 100], title: 'Wynik SUS' },
+            xaxis: { title: 'Data', tickangle: -45 }
+        };
+        Plotly.newPlot('trendChart', [trendTrace], trendLayout, {responsive: true});
+    </script>
+</body>
+</html>

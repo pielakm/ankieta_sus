@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Ankieta SUS</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <h1>System Usability Scale (SUS)</h1>
+
+    <% if (error) { %>
+        <div class="error"><%= error %></div>
+    <% } %>
+
+    <p class="intro">Witaj, <%= nickname %>. Oceń poniższe stwierdzenia
+        (1 - Zdecydowanie się nie zgadzam,
+        2 - Raczej się nie zgadzam,
+        3 - Nie mam zdania,
+        4 - Raczej się zgadzam,
+        5 - Zdecydowanie się zgadzam)
+    </p>
+    
+    <form method="POST" action="/survey">
+        <input type="hidden" name="nickname" value="<%= nickname %>">
+        
+        <% questions.forEach((question, index) => { %>
+        <div class="question-group">
+            <p><strong><%= index + 1 %>.</strong> <%= question.text %></p>
+            <div class="scale-options">
+                <% for (let i = 1; i <= 5; i++) { %>
+                <label>
+                    <input type="radio" name="q<%= index %>" value="<%= i %>" required>
+                    <span><%= i %></span>
+                    <br>
+                    <% if (i === 1) { %> <small>Zdecydowanie się nie zgadzam</small> <% } %>
+                    <% if (i === 2) { %> <small>Raczej się nie zgadzam</small> <% } %>
+                    <% if (i === 3) { %> <small>Nie mam zdania</small> <% } %>
+                    <% if (i === 4) { %> <small>Raczej się zgadzam</small> <% } %>
+                    <% if (i === 5) { %> <small>Zdecydowanie się zgadzam</small> <% } %>
+                </label>
+                <% } %>
+            </div>
+        </div>
+        <% }); %>
+        
+        <button type="submit" class="submit-btn">Oblicz Wynik SUS i Zapisz</button>
+    </form>
+    
+    <% if (susScore !== null) { %>
+    <div class="score-box">
+        <h2>Twój Wynik SUS</h2>
+        <p class="score-value"><%= susScore %></p>
+
+        <% if (typeof susInterpretation !== 'undefined') { %>
+            <p class="score-rating">
+                Ocena Przymiotnikowa: <%= susInterpretation.rating %>
+            </p>
+            <p class="score-grade">
+                Klasa Szkolna: <%= susInterpretation.grade %>
+            </p>
+        <% } %>
+        <p>Średnia SUS wynosi około 68. Wyniki powyżej 80,3 są ogólnie uznawane za bardzo dobre.</p>
+        <a href="/results" class="simple-button">Zobacz wszystkie wyniki</a>
+    </div>
+    <% } %>
+
+    <footer>
+        Ankieta SUS została stworzona przez Mateusza Pielaka na potrzeby projektu gry Mahjong.
+    </footer>
+</body>
+</html>
